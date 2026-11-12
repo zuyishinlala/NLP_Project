@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from core.config import DEFAULT_MODEL, load_settings
 from evaluators.bfcl_runner import run_bfcl_evaluation
@@ -36,6 +37,14 @@ def parse_args() -> EvaluationOptions:
         action="store_true",
         help="Evaluate only the first official BFCL v4 simple_python example.",
     )
+    parser.add_argument(
+        "--dataset-dir",
+        type=Path,
+        help=(
+            "Optional BFCL v4 data directory containing BFCL_v4_<category>.json "
+            "files and a possible_answer/ subdirectory."
+        ),
+    )
     args = parser.parse_args()
     return EvaluationOptions(
         model=args.model,
@@ -43,6 +52,7 @@ def parse_args() -> EvaluationOptions:
         workers=args.workers,
         overwrite=args.overwrite,
         first_only=args.first_only,
+        dataset_dir=args.dataset_dir,
     )
 
 

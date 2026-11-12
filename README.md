@@ -3,8 +3,9 @@
 Run the official BFCL evaluator with a model hosted by Virginia Tech ARC.
 
 > **Dataset version:** The evaluator in this project uses the dataset packaged
-> with `bfcl-eval` (BFCL v4). It does not evaluate the local `BFCL_v3_*.json`
-> files in `bfcl_dataset/`.
+> with `bfcl-eval` (BFCL v4). The `bfcl_dataset/` directory contains BFCL's
+> upstream dataset files; it is not a project-authored dataset, and the v4
+> evaluator does not read those local files.
 
 ## Setup
 
@@ -55,6 +56,34 @@ The supported model names can change; consult the
 The evaluator limits workers to 10 to stay within ARC's per-model concurrency
 limit.
 
+### Use a custom dataset
+
+Pass `--dataset-dir` with a BFCL v4 data directory. It must contain prompt
+files named `BFCL_v4_<category>.json` and, for scored categories other than
+`irrelevance`, matching answer files under `possible_answer/`:
+
+```text
+/path/to/custom-bfcl-data/
+├── BFCL_v4_simple_python.json
+├── BFCL_v4_multiple.json
+└── possible_answer/
+    ├── BFCL_v4_simple_python.json
+    └── BFCL_v4_multiple.json
+```
+
+For example:
+
+```bash
+.venv/bin/python main.py \
+  --dataset-dir /path/to/custom-bfcl-data \
+  --categories simple_python multiple \
+  --model gpt-oss-120b
+```
+
+The custom data and answer files must follow the installed BFCL evaluator's
+v4 schema. The local BFCL v3 files are not directly compatible with this v4
+runner.
+
 BFCL writes generated responses and scores to `bfcl_official_results/`. A
 one-example run can produce an official per-category score, but BFCL cannot
 calculate leaderboard latency statistics from just one sample.
@@ -82,7 +111,7 @@ The standalone API example uses the same `.env` configuration:
 │   └── bfcl_runner.py          # Adapts the official BFCL runner to ARC
 ├── arc_llm_example.py          # Minimal direct ARC API example
 ├── requirements.txt            # Python dependencies
-├── bfcl_dataset/               # Local BFCL v3 data; not used by the v4 runner
+├── bfcl_dataset/               # Upstream BFCL dataset files; not read by this v4 runner
 └── bfcl_official_results/      # Generated BFCL v4 results and scores
 ```
 

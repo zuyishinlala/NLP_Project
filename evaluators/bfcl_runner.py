@@ -1,8 +1,10 @@
+import hashlib
 import json
 import re
 import statistics
 from dataclasses import replace
-from types import SimpleNamespace
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
 
 from core.config import Settings
 from llm.client import configure_bfcl_client
@@ -10,6 +12,34 @@ from llm.schemas import EvaluationOptions
 
 
 SCORING_MODEL = "gpt-4o-2024-11-20-FC"
+
+
+def configure_dataset_dir(
+    dataset_dir: Path,
+    categories: list[str],
+    bfcl_utils: ModuleType,
+) -> Path:
+    dataset_dir = dataset_dir.expanduser().resolve()
+    if not dataset_dir.is_dir():
+        raise FileNotFoundError(f"Dataset directory does not exist: {dataset_dir}")
+
+    prompt_files = [dataset_dir / f"BFCL_v4_{category}.json" for category in categories]
+    answer_files = [
+        dataset_dir / "possible_answer" / f"BFCL_v4_{category}.json"
+        for category in categories
+        if category != "irrelevance"
+    ]
+    missing_files = [path for path in prompt_files + answer_files if not path.is_file()]
+    if missing_files:
+        missing_list = "\n".join(f"  - {path}" for path in missing_files)
+        raise FileNotFoundError(
+            "The custom dataset must match the installed BFCL v4 format. "
+            "Missing required files:\n" + missing_list
+        )
+
+    bfcl_utils.PROMPT_PATH = dataset_dir
+    bfcl_utils.POSSIBLE_ANSWER_PATH = dataset_dir / "possible_answer"
+    return dataset_dir
 
 
 def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
@@ -24,6 +54,7 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
         from bfcl_eval.model_handler.api_inference.openai_completion import (
             OpenAICompletionsHandler,
         )
+        import bfcl_eval.utils as bfcl_utils
         from bfcl_eval.utils import load_dataset_entry
     except ImportError as error:
         raise RuntimeError(
@@ -39,7 +70,23 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
             "function-calling configuration."
         )
 
-    registry_name = f"arc-{re.sub(r'[^A-Za-z0-9.-]+', '-', options.model)}-FC"
+    categories = ["simple_python"] if options.first_only else options.categories
+    dataset_dir = None
+    if options.dataset_dir is not None:
+        dataset_dir = configure_dataset_dir(
+            options.dataset_dir,
+            categories,
+            bfcl_utils,
+        )
+
+    registry_suffix = ""
+    if dataset_dir is not None:
+        dataset_identity = str(dataset_dir)
+        dataset_hash = hashlib.sha256(dataset_identity.encode()).hexdigest()[:8]
+        registry_suffix = f"-data-{dataset_hash}"
+    registry_name = (
+        f"arc-{re.sub(r'[^A-Za-z0-9.-]+', '-', options.model)}-FC{registry_suffix}"
+    )
     MODEL_CONFIG_MAPPING[registry_name] = replace(
         base_config,
         model_name=options.model,
@@ -50,7 +97,6 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
         model_handler=OpenAICompletionsHandler,
     )
 
-    categories = options.categories
     if options.first_only:
         first_entry = load_dataset_entry("simple_python")[0]
         id_file = settings.results_root / "test_case_ids_to_generate.json"

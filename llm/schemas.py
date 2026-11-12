@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -24,3 +25,4 @@ class EvaluationOptions(BaseModel):
     workers: int = Field(default=5, ge=1, le=10)
     overwrite: bool = False
     first_only: bool = False
+    dataset_dir: Path | None = None
