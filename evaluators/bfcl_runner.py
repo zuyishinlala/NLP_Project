@@ -14,6 +14,27 @@ from llm.schemas import EvaluationOptions
 SCORING_MODEL = "gpt-4o-2024-11-20-FC"
 
 
+def select_sample_ids(
+    categories: list[str],
+    sample_count: int,
+    load_entries,
+) -> dict[str, list[str]]:
+    selected_ids = {}
+    for category in categories:
+        entries = load_entries(category)
+        if not entries:
+            raise ValueError(f"BFCL category {category!r} contains no examples.")
+        selected = entries[:sample_count]
+        if sample_count > len(entries):
+            print(
+                f"Requested {sample_count} samples for {category}, but only "
+                f"{len(entries)} are available; using all available examples."
+            )
+        selected_ids[category] = [entry["id"] for entry in selected]
+        print(f"Selected {len(selected)} of {len(entries)} examples for {category}.")
+    return selected_ids
+
+
 def configure_dataset_dir(
     dataset_dir: Path,
     categories: list[str],
@@ -40,6 +61,29 @@ def configure_dataset_dir(
     bfcl_utils.PROMPT_PATH = dataset_dir
     bfcl_utils.POSSIBLE_ANSWER_PATH = dataset_dir / "possible_answer"
     return dataset_dir
+
+
+def register_existing_arc_models(model_mapping, base_config, *result_roots: Path) -> None:
+    model_pattern = re.compile(r"^arc-(?P<model>.+)-FC(?:-data-[0-9a-f]{8})?$")
+    for result_root in result_roots:
+        if not result_root.is_dir():
+            continue
+        for model_dir in result_root.iterdir():
+            if not model_dir.is_dir():
+                continue
+            match = model_pattern.fullmatch(model_dir.name)
+            if match is None or model_dir.name in model_mapping:
+                continue
+            model_name = match.group("model")
+            model_mapping[model_dir.name] = replace(
+                base_config,
+                model_name=model_name,
+                display_name=f"ARC {model_name} (FC)",
+                url="https://www.docs.arc.vt.edu/ai/011_llm_api_arc_vt_edu.html",
+                org="Virginia Tech ARC",
+                license="See ARC model documentation",
+                model_handler=base_config.model_handler,
+            )
 
 
 def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
@@ -70,7 +114,7 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
             "function-calling configuration."
         )
 
-    categories = ["simple_python"] if options.first_only else options.categories
+    categories = options.categories
     dataset_dir = None
     if options.dataset_dir is not None:
         dataset_dir = configure_dataset_dir(
@@ -96,15 +140,28 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
         license="See ARC model documentation",
         model_handler=OpenAICompletionsHandler,
     )
+    register_existing_arc_models(
+        MODEL_CONFIG_MAPPING,
+        replace(base_config, model_handler=OpenAICompletionsHandler),
+        RESULT_PATH,
+        SCORE_PATH,
+    )
 
-    if options.first_only:
-        first_entry = load_dataset_entry("simple_python")[0]
+    run_ids = options.samples is not None
+    if run_ids:
+        sample_count = options.samples
+        if sample_count is None:
+            raise RuntimeError("Sample count was not provided for a partial run.")
+        selected_ids = select_sample_ids(
+            categories,
+            sample_count,
+            load_dataset_entry,
+        )
         id_file = settings.results_root / "test_case_ids_to_generate.json"
         id_file.write_text(
-            json.dumps({"simple_python": [first_entry["id"]]}, indent=2) + "\n",
+            json.dumps(selected_ids, indent=2) + "\n",
             encoding="utf-8",
         )
-        print(f"Testing first official simple_python example: {first_entry['id']}")
 
     generation_args = SimpleNamespace(
         model=[registry_name],
@@ -119,8 +176,8 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
         skip_server_setup=False,
         local_model_path=None,
         result_dir=None,
-        allow_overwrite=options.overwrite or options.first_only,
-        run_ids=options.first_only,
+        allow_overwrite=options.overwrite,
+        run_ids=run_ids,
         enable_lora=False,
         max_lora_rank=None,
         lora_modules=None,
@@ -136,26 +193,30 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
             categories,
             None,
             None,
-            partial_eval=options.first_only,
+            partial_eval=run_ids,
         )
     except statistics.StatisticsError:
-        if not options.first_only:
+        if not run_ids:
             raise
-        score_path = (
+        score_paths = [
             SCORE_PATH
             / registry_name
             / "non_live"
-            / "BFCL_v4_simple_python_score.json"
-        )
-        if not score_path.is_file():
+            / f"BFCL_v4_{category}_score.json"
+            for category in categories
+        ]
+        available_scores = [path for path in score_paths if path.is_file()]
+        if not available_scores:
             raise
-        score = json.loads(score_path.read_text(encoding="utf-8"))
-        print(
-            "BFCL category scoring completed for the single example: "
-            f"{score['correct_count']}/{score['total_count']} "
-            f"({score['accuracy']:.1%}). BFCL skipped leaderboard CSV aggregation "
-            "because standard deviation requires at least two examples."
-        )
+        for score_path in available_scores:
+            score = json.loads(score_path.read_text(encoding="utf-8"))
+            print(
+                f"BFCL category scoring completed for "
+                f"{score['correct_count']}/{score['total_count']} "
+                f"({score['accuracy']:.1%}). BFCL skipped leaderboard CSV "
+                "aggregation because latency statistics require at least two "
+                "samples."
+            )
 
     print(f"Results: {RESULT_PATH / registry_name}")
     print(f"Scores: {SCORE_PATH / registry_name}")

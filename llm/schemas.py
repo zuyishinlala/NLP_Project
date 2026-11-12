@@ -24,5 +24,5 @@ class EvaluationOptions(BaseModel):
     )
     workers: int = Field(default=5, ge=1, le=10)
     overwrite: bool = False
-    first_only: bool = False
+    samples: int | None = Field(default=None, ge=1)
     dataset_dir: Path | None = None

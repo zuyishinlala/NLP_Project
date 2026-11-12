@@ -33,9 +33,12 @@ def parse_args() -> EvaluationOptions:
         help="Regenerate result files even if they already exist.",
     )
     parser.add_argument(
-        "--first-only",
-        action="store_true",
-        help="Evaluate only the first official BFCL v4 simple_python example.",
+        "--samples",
+        type=int,
+        help=(
+            "Number of examples to run per selected category. If greater than "
+            "a category's size, all available examples in that category are used."
+        ),
     )
     parser.add_argument(
         "--dataset-dir",
@@ -51,7 +54,7 @@ def parse_args() -> EvaluationOptions:
         categories=args.categories,
         workers=args.workers,
         overwrite=args.overwrite,
-        first_only=args.first_only,
+        samples=args.samples,
         dataset_dir=args.dataset_dir,
     )
 

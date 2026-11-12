@@ -4,3 +4,4 @@ bfcl_dataset/
 bfcl_official_results/
 .DS_Store
 __pycache__/
+data/

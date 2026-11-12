@@ -29,11 +29,17 @@ Keep `.env` private. It is ignored by Git; do not commit or share the key.
 
 ## Run the evaluation
 
-Test only the first `simple_python` example:
+Run a limited number of examples per selected category:
 
 ```bash
-.venv/bin/python main.py --first-only --model gpt-oss-120b --workers 1
+.venv/bin/python main.py --samples 1 --model gpt-oss-120b --workers 1
 ```
+
+For example, `--samples 3` selects up to three examples from each selected
+category. If a category contains fewer examples, the runner uses all available
+examples; it never indexes beyond the category's data. Omit `--samples` to run
+all examples in each selected category. Repeating the same partial run reuses
+already generated responses; add `--overwrite` to generate them again.
 
 Run the default categories (`simple_python`, `multiple`, `parallel`, and
 `irrelevance`):
@@ -84,9 +90,9 @@ The custom data and answer files must follow the installed BFCL evaluator's
 v4 schema. The local BFCL v3 files are not directly compatible with this v4
 runner.
 
-BFCL writes generated responses and scores to `bfcl_official_results/`. A
-one-example run can produce an official per-category score, but BFCL cannot
-calculate leaderboard latency statistics from just one sample.
+BFCL writes generated responses and scores to `bfcl_official_results/`. Small
+sample runs can produce official per-category scores, but BFCL may be unable to
+calculate leaderboard latency statistics when a category has only one sample.
 
 ## Test a direct ARC chat request
 
