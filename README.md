@@ -40,6 +40,8 @@ category. If a category contains fewer examples, the runner uses all available
 examples; it never indexes beyond the category's data. Omit `--samples` to run
 all examples in each selected category. Repeating the same partial run reuses
 already generated responses; add `--overwrite` to generate them again.
+ARC HTTP 403 errors stop generation and are raised instead of being recorded as
+model results; other inference failures retain BFCL's per-example handling.
 
 Run the default categories (`simple_python`, `multiple`, `parallel`, and
 `irrelevance`):

@@ -3,6 +3,7 @@ import json
 import os
 import re
 import statistics
+import traceback
 from dataclasses import replace
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -10,9 +11,46 @@ from types import ModuleType, SimpleNamespace
 from core.config import Settings
 from llm.client import configure_bfcl_client
 from llm.schemas import EvaluationOptions
+from tqdm import tqdm
 
 
 SCORING_MODEL = "gpt-4o-2024-11-20-FC"
+
+
+def _multi_threaded_inference_raise_on_403(
+    handler,
+    test_case,
+    include_input_log,
+    exclude_state_log,
+):
+    assert type(test_case["function"]) is list
+
+    try:
+        result, metadata = handler.inference(
+            test_case,
+            include_input_log,
+            exclude_state_log,
+        )
+    except Exception as error:
+        if getattr(error, "status_code", None) == 403:
+            raise
+
+        error_block = (
+            "-" * 100
+            + "\n❗️❗️ Error occurred during inference. Continuing to next test case.\n"
+            + f"❗️❗️ Test case ID: {test_case['id']}, Error: {str(error)}\n"
+            + traceback.format_exc(limit=10)
+            + "-" * 100
+        )
+        tqdm.write(error_block)
+        result = f"Error during inference: {str(error)}"
+        metadata = {"traceback": traceback.format_exc()}
+
+    return {
+        "id": test_case["id"],
+        "result": result,
+        **metadata,
+    }
 
 
 def select_sample_ids(
@@ -188,8 +226,14 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
     )
 
     print(f"Generating BFCL v4 responses with ARC model {options.model}...")
+    original_multi_threaded_inference = (
+        bfcl_generation.multi_threaded_inference
+    )
     original_test_ids_path = bfcl_generation.TEST_IDS_TO_GENERATE_PATH
     try:
+        bfcl_generation.multi_threaded_inference = (
+            _multi_threaded_inference_raise_on_403
+        )
         if run_ids:
             # BFCL reads partial-run IDs from this module-level path.
             bfcl_generation.TEST_IDS_TO_GENERATE_PATH = (
@@ -197,6 +241,9 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
             )
         bfcl_generation.main(generation_args)
     finally:
+        bfcl_generation.multi_threaded_inference = (
+            original_multi_threaded_inference
+        )
         bfcl_generation.TEST_IDS_TO_GENERATE_PATH = original_test_ids_path
 
     print("Scoring results with BFCL's official evaluator...")
