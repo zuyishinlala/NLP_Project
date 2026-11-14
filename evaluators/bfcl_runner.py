@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import re
 import statistics
 from dataclasses import replace
@@ -87,11 +88,12 @@ def register_existing_arc_models(model_mapping, base_config, *result_roots: Path
 
 
 def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
-    settings.results_root.mkdir(parents=True, exist_ok=True)
+    results_root = settings.results_root
+    results_root.mkdir(parents=True, exist_ok=True)
     configure_bfcl_client(settings)
-
+    os.environ["BFCL_PROJECT_ROOT"] = str(results_root)
     try:
-        from bfcl_eval._llm_response_generation import main as generate_main
+        import bfcl_eval._llm_response_generation as bfcl_generation
         from bfcl_eval.constants.eval_config import RESULT_PATH, SCORE_PATH
         from bfcl_eval.constants.model_config import MODEL_CONFIG_MAPPING
         from bfcl_eval.eval_checker.eval_runner import main as evaluate_main
@@ -114,6 +116,13 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
             "function-calling configuration."
         )
 
+    register_existing_arc_models(
+        MODEL_CONFIG_MAPPING,
+        replace(base_config, model_handler=OpenAICompletionsHandler),
+        RESULT_PATH,
+        SCORE_PATH,
+    )
+
     categories = options.categories
     dataset_dir = None
     if options.dataset_dir is not None:
@@ -129,7 +138,8 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
         dataset_hash = hashlib.sha256(dataset_identity.encode()).hexdigest()[:8]
         registry_suffix = f"-data-{dataset_hash}"
     registry_name = (
-        f"arc-{re.sub(r'[^A-Za-z0-9.-]+', '-', options.model)}-FC{registry_suffix}"
+        f"arc-{re.sub(r'[^A-Za-z0-9.-]+', '-', options.model)}"
+        f"-FC{registry_suffix}"
     )
     MODEL_CONFIG_MAPPING[registry_name] = replace(
         base_config,
@@ -139,12 +149,6 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
         org="Virginia Tech ARC",
         license="See ARC model documentation",
         model_handler=OpenAICompletionsHandler,
-    )
-    register_existing_arc_models(
-        MODEL_CONFIG_MAPPING,
-        replace(base_config, model_handler=OpenAICompletionsHandler),
-        RESULT_PATH,
-        SCORE_PATH,
     )
 
     run_ids = options.samples is not None
@@ -157,7 +161,7 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
             sample_count,
             load_dataset_entry,
         )
-        id_file = settings.results_root / "test_case_ids_to_generate.json"
+        id_file = results_root / "test_case_ids_to_generate.json"
         id_file.write_text(
             json.dumps(selected_ids, indent=2) + "\n",
             encoding="utf-8",
@@ -184,7 +188,16 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
     )
 
     print(f"Generating BFCL v4 responses with ARC model {options.model}...")
-    generate_main(generation_args)
+    original_test_ids_path = bfcl_generation.TEST_IDS_TO_GENERATE_PATH
+    try:
+        if run_ids:
+            # BFCL reads partial-run IDs from this module-level path.
+            bfcl_generation.TEST_IDS_TO_GENERATE_PATH = (
+                results_root / "test_case_ids_to_generate.json"
+            )
+        bfcl_generation.main(generation_args)
+    finally:
+        bfcl_generation.TEST_IDS_TO_GENERATE_PATH = original_test_ids_path
 
     print("Scoring results with BFCL's official evaluator...")
     try:
@@ -209,7 +222,10 @@ def run_bfcl_evaluation(options: EvaluationOptions, settings: Settings) -> None:
         if not available_scores:
             raise
         for score_path in available_scores:
-            score = json.loads(score_path.read_text(encoding="utf-8"))
+            score_lines = score_path.read_text(encoding="utf-8").splitlines()
+            if not score_lines:
+                raise RuntimeError(f"BFCL score file is empty: {score_path}")
+            score = json.loads(score_lines[0])
             print(
                 f"BFCL category scoring completed for "
                 f"{score['correct_count']}/{score['total_count']} "
