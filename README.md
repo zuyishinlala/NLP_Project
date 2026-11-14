@@ -57,6 +57,12 @@ Choose categories or another ARC model as needed:
   --workers 5
 ```
 
+Evaluate all three example ARC models sequentially on the default categories:
+
+```bash
+.venv/bin/python scripts/evaluate_models.py
+```
+
 The supported model names can change; consult the
 [ARC LLM API documentation](https://www.docs.arc.vt.edu/ai/011_llm_api_arc_vt_edu.html).
 The evaluator limits workers to 10 to stay within ARC's per-model concurrency
