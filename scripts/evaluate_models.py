@@ -5,7 +5,10 @@ import sys
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODELS = ("gpt-oss-120b", "GLM-5.3", "DeepSeek-V4.1-Flash")
-DEFAULT_CATEGORIES = ("simple_python", "multiple", "parallel", "irrelevance")
+DEFAULT_CATEGORIES = tuple(
+    path.name.removeprefix("BFCL_v4_").removesuffix(".json")
+    for path in sorted((PROJECT_ROOT / "data").glob("BFCL_v4_*.json"))
+)
 
 
 def evaluate_models(categories: tuple[str, ...]) -> None:

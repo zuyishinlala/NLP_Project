@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from scripts.evaluate_models import MODELS, PROJECT_ROOT, evaluate_models
+from scripts.evaluate_models import DEFAULT_CATEGORIES, MODELS, PROJECT_ROOT, evaluate_models
 
 
 class EvaluateModelsTests(unittest.TestCase):
@@ -17,6 +17,10 @@ class EvaluateModelsTests(unittest.TestCase):
             self.assertEqual(command[category_index + 1 :], ["parallel"])
             self.assertEqual(call.kwargs["cwd"], PROJECT_ROOT)
             self.assertTrue(call.kwargs["check"])
+
+    def test_default_categories_include_non_legacy_bfcl_sets(self):
+        self.assertIn("live_simple", DEFAULT_CATEGORIES)
+        self.assertIn("memory", DEFAULT_CATEGORIES)
 
 
 if __name__ == "__main__":

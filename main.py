@@ -3,7 +3,7 @@ from pathlib import Path
 
 from core.config import DEFAULT_MODEL, load_settings
 from evaluators.bfcl_runner import run_bfcl_evaluation
-from llm.schemas import EvaluationOptions
+from llm.schemas import DEFAULT_BFCL_CATEGORIES, EvaluationOptions
 
 
 def parse_args() -> EvaluationOptions:
@@ -17,9 +17,11 @@ def parse_args() -> EvaluationOptions:
     parser.add_argument(
         "--categories",
         nargs="+",
-        choices=["simple_python", "multiple", "parallel", "irrelevance"],
-        default=["simple_python", "multiple", "parallel", "irrelevance"],
-        help="Official BFCL v4 categories to generate and evaluate.",
+        default=list(DEFAULT_BFCL_CATEGORIES),
+        help=(
+            "BFCL v4 categories to generate and evaluate. Any category with a "
+            "matching BFCL_v4_<category>.json file is accepted."
+        ),
     )
     parser.add_argument(
         "--workers",

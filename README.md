@@ -43,19 +43,19 @@ already generated responses; add `--overwrite` to generate them again.
 ARC HTTP 403 errors stop generation and are raised instead of being recorded as
 model results; other inference failures retain BFCL's per-example handling.
 
-Run the default categories (`simple_python`, `multiple`, `parallel`, and
-`irrelevance`):
+Run the default categories from the bundled BFCL v4 dataset files under
+`data/` (all available categories unless you narrow them with `--categories`):
 
 ```bash
 .venv/bin/python main.py --model gpt-oss-120b --workers 5
 ```
 
-Choose categories or another ARC model as needed:
+Choose a subset or another ARC model as needed:
 
 ```bash
 .venv/bin/python main.py \
   --model DeepSeek-V4.1-Flash \
-  --categories simple_python multiple parallel irrelevance \
+  --categories live_simple memory web_search \
   --workers 5
 ```
 
@@ -72,6 +72,7 @@ Run all three models on one category at a time:
 .venv/bin/python scripts/evaluate_multiple.py
 .venv/bin/python scripts/evaluate_parallel.py
 .venv/bin/python scripts/evaluate_irrelevance.py
+.venv/bin/python scripts/evaluate_multi_turn_base.py
 ```
 
 The supported model names can change; consult the
