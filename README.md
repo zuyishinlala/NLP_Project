@@ -65,10 +65,34 @@ Evaluate all three example ARC models sequentially on the default categories:
 .venv/bin/python scripts/evaluate_models.py
 ```
 
+Run all three models on one category at a time:
+
+```bash
+.venv/bin/python scripts/evaluate_simple_python.py
+.venv/bin/python scripts/evaluate_multiple.py
+.venv/bin/python scripts/evaluate_parallel.py
+.venv/bin/python scripts/evaluate_irrelevance.py
+```
+
 The supported model names can change; consult the
 [ARC LLM API documentation](https://www.docs.arc.vt.edu/ai/011_llm_api_arc_vt_edu.html).
 The evaluator limits workers to 10 to stay within ARC's per-model concurrency
 limit.
+
+## Current results
+
+The following BFCL v4 non-live scores are from the saved evaluation outputs.
+Each category score covers the full category: 400 `simple_python`, 200
+`multiple`, 200 `parallel`, and 240 `irrelevance` examples per model. The
+overall accuracy is copied from BFCL's generated `data_non_live.csv`.
+
+| Rank | Model | Overall accuracy | Simple Python | Multiple | Parallel | Irrelevance |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | ARC GLM-5.3 (FC) | 54.67% | 95.00% | 95.00% | 92.00% | 69.58% |
+| 2 | ARC DeepSeek-V4.1-Flash (FC) | 53.85% | 94.25% | 92.50% | 91.50% | 72.92% |
+| 3 | ARC gpt-oss-120b (FC) | 28.46% | 88.00% | 84.50% | 0.00% | 87.08% |
+
+These are a snapshot of the local results and may change after a new evaluation.
 
 ### Use a custom dataset
 
