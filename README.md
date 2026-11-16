@@ -86,13 +86,13 @@ limit.
 The following BFCL v4 non-live scores are from the saved evaluation outputs.
 Each category score covers the full category: 400 `simple_python`, 200
 `multiple`, 200 `parallel`, and 240 `irrelevance` examples per model. The
-overall accuracy is copied from BFCL's generated `data_non_live.csv`.
+scores are copied from BFCL's generated `data_non_live.csv`.
 
-| Rank | Model | Overall accuracy | Simple Python | Multiple | Parallel | Irrelevance |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | ARC GLM-5.3 (FC) | 54.67% | 95.00% | 95.00% | 92.00% | 69.58% |
-| 2 | ARC DeepSeek-V4.1-Flash (FC) | 53.85% | 94.25% | 92.50% | 91.50% | 72.92% |
-| 3 | ARC gpt-oss-120b (FC) | 28.46% | 88.00% | 84.50% | 0.00% | 87.08% |
+| Rank | Model | Simple Python | Multiple | Parallel | Irrelevance |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 1 | ARC GLM-5.3 (FC) | 95.00% | 95.00% | 92.00% | 69.58% |
+| 2 | ARC DeepSeek-V4.1-Flash (FC) | 94.25% | 92.50% | 91.50% | 72.92% |
+| 3 | ARC gpt-oss-120b (FC) | 88.00% | 84.50% | 0.00% | 87.08% |
 
 These are a snapshot of the local results and may change after a new evaluation.
 
@@ -102,11 +102,11 @@ The following BFCL v4 multi-turn scores are from
 [data_multi_turn.csv](./bfcl_official_results/score/data_multi_turn.csv). The
 missing-function and missing-parameter scores are unavailable in this snapshot.
 
-| Rank | Model | Multi-turn overall | Base | Missing function | Missing parameter | Long context |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | ARC GLM-5.3 (FC) | 34.50% | 73.00% | N/A | N/A | 65.00% |
-| 2 | ARC DeepSeek-V4.1-Flash (FC) | 30.75% | 65.00% | N/A | N/A | 58.00% |
-| 3 | ARC gpt-oss-120b (FC) | 29.62% | 64.00% | N/A | N/A | 54.50% |
+| Rank | Model | Base | Missing function | Missing parameter | Long context |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 1 | ARC GLM-5.3 (FC) | 73.00% | N/A | N/A | 65.00% |
+| 2 | ARC DeepSeek-V4.1-Flash (FC) | 65.00% | N/A | N/A | 58.00% |
+| 3 | ARC gpt-oss-120b (FC) | 64.00% | N/A | N/A | 54.50% |
 
 ### Use a custom dataset
 
