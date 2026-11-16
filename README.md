@@ -74,6 +74,8 @@ Run all three models on one category at a time:
 .venv/bin/python scripts/evaluate_irrelevance.py
 .venv/bin/python scripts/evaluate_multi_turn_base.py
 .venv/bin/python scripts/evaluate_multi_turn_long_context.py
+.venv/bin/python scripts/evaluate_multi_turn_miss_func.py
+.venv/bin/python scripts/evaluate_multi_turn_miss_param.py
 ```
 
 The supported model names can change; consult the
@@ -99,14 +101,13 @@ These are a snapshot of the local results and may change after a new evaluation.
 ### Multi-turn results
 
 The following BFCL v4 multi-turn scores are from
-[data_multi_turn.csv](./bfcl_official_results/score/data_multi_turn.csv). The
-missing-function and missing-parameter scores are unavailable in this snapshot.
+[data_multi_turn.csv](./bfcl_official_results/score/data_multi_turn.csv).
 
 | Rank | Model | Base | Missing function | Missing parameter | Long context |
 | ---: | --- | ---: | ---: | ---: | ---: |
-| 1 | ARC GLM-5.3 (FC) | 73.00% | N/A | N/A | 65.00% |
-| 2 | ARC DeepSeek-V4.1-Flash (FC) | 65.00% | N/A | N/A | 58.00% |
-| 3 | ARC gpt-oss-120b (FC) | 64.00% | N/A | N/A | 54.50% |
+| 1 | ARC GLM-5.3 (FC) | 73.00% | 56.00% | 57.00% | 65.00% |
+| 2 | ARC gpt-oss-120b (FC) | 64.00% | 52.50% | 51.00% | 54.50% |
+| 3 | ARC DeepSeek-V4.1-Flash (FC) | 65.00% | 23.50% | 50.50% | 58.00% |
 
 ### Use a custom dataset
 
