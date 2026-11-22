@@ -1,4 +1,5 @@
 bfcl-eval==2025.12.17
+gepa==0.1.4
 soundfile
 openai
 python-dotenv

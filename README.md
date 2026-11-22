@@ -141,6 +141,54 @@ BFCL writes generated responses and scores to `bfcl_official_results/`. Small
 sample runs can produce official per-category scores, but BFCL may be unable to
 calculate leaderboard latency statistics when a category has only one sample.
 
+## Optimize a system prompt by reflection
+
+`scripts/gepa_optimize.py` improves a system prompt for `multi_turn_base` and
+`irrelevance`. Each category is split with a fixed seed into 40% train, 20%
+validation, and 40% held-out test. Each round runs the current best prompt on a
+train minibatch, gives the failure traces and BFCL's checker messages to a
+reflection model, which proposes K new prompts (using
+[GEPA](https://github.com/gepa-ai/gepa)'s reflection template). Every train
+rollout goes into a replay buffer tagged with the prompt that produced it, and
+each reflection also sees `--replay-size` rollouts from earlier prompts, so the
+proposer learns from off-policy data as well as the current prompt's failures
+(`--replay-size 0` turns this off). Each candidate is first rerun on the same
+train minibatch, and only candidates that get more examples right than the
+current prompt are scored on validation, which skips some of the expensive
+validation runs. The validation score is the mean per-category accuracy, minus
+an optional penalty for each category that drops below the no-prompt baseline.
+A candidate replaces the best prompt only if it beats it by more than
+`--promotion-margin` (default 0.02, about 2 more correct validation examples in
+either category), so small-sample noise is not promoted.
+
+```bash
+.venv/bin/python -m scripts.gepa_optimize --model GLM-5.3 --rounds 5 --candidates 3 --regression-penalty 0.5
+```
+
+The held-out test split is evaluated only once, at the end, for both the
+best prompt and the no-prompt baseline. The results, including every round's
+candidates, go to `bfcl_official_results/gepa/<model>/report.json`. A custom
+system prompt is not the official BFCL setup, so report these scores separately
+from the leaderboard numbers above.
+
+### Optimization results
+
+GLM-5.3 as both the target and the reflection model, with the command above (5
+rounds, 3 candidates, replay size 8, regression penalty 0.5). Test is the
+held-out split: 80 `multi_turn_base` and 96 `irrelevance` examples.
+
+| Split | Prompt | Multi-turn base | Irrelevance | Mean |
+| --- | --- | ---: | ---: | ---: |
+| Validation | None | 75.00% | 72.92% | 73.96% |
+| Validation | Optimized | 80.00% | 89.58% | 84.79% |
+| Test | None | 75.00% | 75.00% | 75.00% |
+| Test | Optimized | 78.75% | 90.62% | 84.69% |
+
+The irrelevance gain (+15.6 points, 15 more correct test examples) is well
+beyond sampling noise. The multi-turn gain (+3.75 points, 3 examples) is within
+it. The best prompt was found in round 1. Later candidates grew longer and
+traded multi-turn accuracy for irrelevance accuracy, and none beat it.
+
 ## Test a direct ARC chat request
 
 The standalone API example uses the same `.env` configuration:
