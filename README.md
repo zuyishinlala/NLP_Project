@@ -173,21 +173,41 @@ from the leaderboard numbers above.
 
 ### Optimization results
 
-GLM-5.3 as both the target and the reflection model, with the command above (5
-rounds, 3 candidates, replay size 8, regression penalty 0.5). Test is the
-held-out split: 80 `multi_turn_base` and 96 `irrelevance` examples.
+Each model was optimized with the command above (5 rounds, 3 candidates, replay
+size 8, regression penalty 0.5), using the same model as the reflection model.
+Test is the held-out split: 80 `multi_turn_base` and 96 `irrelevance` examples.
+The full reports, including each best prompt, are in
+[output_GLM.txt](./output_GLM.txt), [output_DeepSeek.txt](./output_DeepSeek.txt),
+and [output_GPT.txt](./output_GPT.txt).
 
-| Split | Prompt | Multi-turn base | Irrelevance | Mean |
-| --- | --- | ---: | ---: | ---: |
-| Validation | None | 75.00% | 72.92% | 73.96% |
-| Validation | Optimized | 80.00% | 89.58% | 84.79% |
-| Test | None | 75.00% | 75.00% | 75.00% |
-| Test | Optimized | 78.75% | 90.62% | 84.69% |
+| Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
+| --- | ---: | ---: |
+| ARC GLM-5.3 (FC) | 75.00% → 78.75% | 75.00% → 90.62% |
+| ARC DeepSeek-V4.1-Flash (FC) | 65.00% → 80.00% | 81.25% → 92.71% |
+| ARC gpt-oss-120b (FC) | 66.25% → 66.25% | 90.62% → 90.62% |
 
-The irrelevance gain (+15.6 points, 15 more correct test examples) is well
-beyond sampling noise. The multi-turn gain (+3.75 points, 3 examples) is within
-it. The best prompt was found in round 1. Later candidates grew longer and
-traded multi-turn accuracy for irrelevance accuracy, and none beat it.
+Validation accuracy, which chose the best prompt:
+
+| Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
+| --- | ---: | ---: |
+| ARC GLM-5.3 (FC) | 75.00% → 80.00% | 72.92% → 89.58% |
+| ARC DeepSeek-V4.1-Flash (FC) | 60.00% → 72.50% | 79.17% → 91.67% |
+| ARC gpt-oss-120b (FC) | 55.00% → 55.00% | 93.75% → 93.75% |
+
+- **DeepSeek-V4.1-Flash** improved on both categories (+12 and +11 correct test
+  examples), well beyond sampling noise.
+- **GLM-5.3** improved on irrelevance (+15 examples). Its multi-turn gain (+3
+  examples) is within sampling noise.
+- **gpt-oss-120b** did not improve: no candidate was promoted, so the optimized
+  prompt is empty. As the reflection model, it copied the trace log format into
+  its candidates and told the model to write tool calls as JSON text instead of
+  native function calls, which dropped multi-turn accuracy to as low as 0%.
+- Both successful prompts add the same irrelevance rule (only call a function
+  that can actually fulfil the request), but their multi-turn rules point in
+  opposite directions: GLM-5.3's prompt asks for fewer calls (no extra status
+  checks or verification), while DeepSeek's asks it to finish the whole task
+  and verify the result. Each prompt fixes its own model's mistakes, so a
+  prompt optimized for one model should not be assumed to help another.
 
 ## Test a direct ARC chat request
 
