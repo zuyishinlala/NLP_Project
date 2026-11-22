@@ -6,19 +6,21 @@ that proposes K new prompts, screen each on the same minibatch, score the
 survivors on validation, and promote the best one if it beats the current best by a margin. The held-out test split is evaluated once at the end.
 
 Run: .venv/bin/python -m scripts.gepa_optimize --model GLM-5.3
+Writes output/<model>/log.txt (everything printed) and output/<model>/report.json.
 """
 
 import argparse
 import copy
 import json
 import random
+import sys
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import openai
 from gepa.strategies.instruction_proposal import InstructionProposalSignature
 
-from core.config import load_settings
+from core.config import PROJECT_ROOT, load_settings
 from llm.client import configure_bfcl_client, create_arc_client
 
 
@@ -242,6 +244,25 @@ def optimize(adapter, reflection_lm, train, val, seed_prompt="", rounds=5, k=3,
     return best, baseline, history
 
 
+class _Tee:
+    """Writes to the terminal and the log file; flushes each write so a crash keeps the log."""
+
+    def __init__(self, terminal, log):
+        self.terminal, self.log = terminal, log
+
+    def write(self, text):
+        self.terminal.write(text)
+        self.log.write(text)
+        self.log.flush()
+
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+    def __getattr__(self, name):
+        return getattr(self.terminal, name)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default="GLM-5.3")
@@ -258,6 +279,11 @@ def main():
     parser.add_argument("--minibatch-size", type=int, default=16)
     parser.add_argument("--workers", type=int, default=5, choices=range(1, 11))
     args = parser.parse_args()
+
+    run_dir = PROJECT_ROOT / "output" / args.model
+    run_dir.mkdir(parents=True, exist_ok=True)
+    log = open(run_dir / "log.txt", "w", encoding="utf-8")
+    sys.stdout, sys.stderr = _Tee(sys.stdout, log), _Tee(sys.stderr, log)
 
     settings = load_settings()
     configure_bfcl_client(settings)  # must run before bfcl_eval is imported
@@ -281,8 +307,6 @@ def main():
     train, val, test = load_examples()
     print(f"Split sizes: train={len(train)} val={len(val)} test={len(test)}")
     adapter = BFCLSystemPromptAdapter(args.model, args.workers)
-    run_dir = settings.results_root / "gepa" / args.model
-    run_dir.mkdir(parents=True, exist_ok=True)
 
     best, baseline_val, history = optimize(
         adapter, reflection_lm, train, val,

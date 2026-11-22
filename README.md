@@ -167,7 +167,9 @@ either category), so small-sample noise is not promoted.
 
 The held-out test split is evaluated only once, at the end, for both the
 best prompt and the no-prompt baseline. The results, including every round's
-candidates, go to `bfcl_official_results/gepa/<model>/report.json`. A custom
+candidates, go to `output/<model>/report.json`, and everything printed during the
+run (also shown in the terminal) goes to `output/<model>/log.txt`. A new run for
+the same model overwrites both. A custom
 system prompt is not the official BFCL setup, so report these scores separately
 from the leaderboard numbers above.
 
@@ -176,9 +178,10 @@ from the leaderboard numbers above.
 Each model was optimized with the command above (5 rounds, 3 candidates, replay
 size 8, regression penalty 0.5), using the same model as the reflection model.
 Test is the held-out split: 80 `multi_turn_base` and 96 `irrelevance` examples.
-The full reports, including each best prompt, are in
-[output_GLM.txt](./output_GLM.txt), [output_DeepSeek.txt](./output_DeepSeek.txt),
-and [output_GPT.txt](./output_GPT.txt).
+Each model's best prompt and full history are in its `report.json`, and the run
+log is in `log.txt`: [GLM-5.3](./output/GLM-5.3/),
+[DeepSeek-V4.1-Flash](./output/DeepSeek-V4.1-Flash/), and
+[gpt-oss-120b](./output/gpt-oss-120b/).
 
 | Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
 | --- | ---: | ---: |
