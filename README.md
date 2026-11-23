@@ -161,6 +161,45 @@ A candidate replaces the best prompt only if it beats it by more than
 `--promotion-margin` (default 0.02, about 2 more correct validation examples in
 either category), so small-sample noise is not promoted.
 
+```text
+BFCL questions (multi_turn_base + irrelevance)
+    │
+    ├── TRAIN 40%   seen by the reflection model
+    ├── VAL   20%   only used to score candidates
+    └── TEST  40%   used once, at the end
+
+Start:
+    no prompt → score on VAL → this is the first "best"
+
+Repeat --rounds times (default 5):
+
+    1. Run best prompt on --minibatch-size TRAIN questions (default 16)
+           │
+           ├── collect current failures   (none → skip to next round)
+           ├── sample --replay-size rollouts made by EARLIER prompts
+           └── save these TRAIN rollouts to the replay buffer
+
+    2. Reflection model reads:
+           best prompt
+           current failures (inputs, model output, BFCL checker feedback)
+           replayed rollouts (each with the prompt used and its score)
+           → writes --candidates new prompts (default 3)
+
+    3. Quick screen: rerun each candidate on the same TRAIN questions
+           not more correct than best → discard
+
+    4. Run surviving candidates on all VAL questions
+           score = mean accuracy − --regression-penalty × drop below baseline
+
+    5. Top candidate's score > best score + --promotion-margin (default 0.02)?
+           yes → new best prompt
+           no  → keep old best
+
+Final:
+    TEST with no prompt  vs.  TEST with best prompt
+    → output/<model>/report.json and output/<model>/log.txt
+```
+
 ```bash
 .venv/bin/python -m scripts.gepa_optimize --model GLM-5.3 --rounds 5 --candidates 3 --regression-penalty 0.5
 ```
