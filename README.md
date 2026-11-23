@@ -212,6 +212,26 @@ the same model overwrites both. A custom
 system prompt is not the official BFCL setup, so report these scores separately
 from the leaderboard numbers above.
 
+### Full GEPA search
+
+`scripts/gepa_full.py` uses the same split, BFCL scoring, reflection model call,
+and final test comparison, but replaces the loop above with `gepa.optimize()`.
+Instead of one best prompt, it keeps a Pareto set: any prompt that is best on at
+least one validation question. It picks the next prompt to improve from that
+set, accepts a new prompt only if it does better on the same train minibatch,
+and can merge two prompts (`--no-merge` turns this off). It has no replay
+buffer, regression penalty, or promotion margin. It runs until `--budget`
+rollouts are used. The default of 1300 is about what one default
+`gepa_optimize.py` run uses, so the two methods can be compared at equal cost.
+
+```bash
+.venv/bin/python -m scripts.gepa_full --model GLM-5.3
+```
+
+Results go to `output/<model>-gepa/report.json`. GEPA's
+checkpoint is saved in `output/<model>-gepa/gepa_state/`, so running the same
+command again after a crash resumes the search instead of starting over.
+
 ### Optimization results
 
 Each model was optimized with the command above (5 rounds, 3 candidates, replay

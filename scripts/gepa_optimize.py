@@ -29,11 +29,14 @@ TRAIN_FRACTION, VAL_FRACTION = 0.4, 0.2  # the rest is the held-out test split
 SEED = 0
 # shortcut: traces are cut to this many characters per field, raise it if the reflection model needs more context.
 MAX_TRACE_CHARS = 6000
-REFLECTION_PROMPT = (
+GENERAL_RULES_PROMPT = (
     InstructionProposalSignature.default_prompt_template
     + "\n\nWrite general rules about how and when to use tools. Do not mention specific "
     "tasks, file names, people, or values from these examples; the instruction will be "
-    "tested on different tasks. Some examples were produced by earlier versions of the "
+    "tested on different tasks."
+)
+REFLECTION_PROMPT = GENERAL_RULES_PROMPT + (
+    " Some examples were produced by earlier versions of the "
     "instruction (see 'System Prompt Used' and 'Score'); keep what made those versions "
     "succeed and avoid what made them fail."
 )
@@ -263,6 +266,30 @@ class _Tee:
         return getattr(self.terminal, name)
 
 
+def make_reflection_lm(client, model):
+    def reflection_lm(prompt):
+        messages = prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}]
+        # ARC caps non-streaming replies at 8000 tokens; with thinking on, GLM spent them all on hidden reasoning
+        # and returned empty content. shortcut: assumes a vLLM-served model, stream with a higher max_tokens if thinking is needed.
+        response = client.chat.completions.create(
+            model=model, messages=messages,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+        )
+        content = response.choices[0].message.content
+        if not content:  # e.g. a reasoning model that spent its whole reply on hidden thinking
+            print(f"  reflection reply was empty (finish_reason={response.choices[0].finish_reason})", flush=True)
+        return content or ""
+
+    return reflection_lm
+
+
+def start_run_log(run_dir):
+    """Create run_dir and copy everything printed (stdout and stderr) into run_dir/log.txt."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    log = open(run_dir / "log.txt", "w", encoding="utf-8")
+    sys.stdout, sys.stderr = _Tee(sys.stdout, log), _Tee(sys.stderr, log)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default="GLM-5.3")
@@ -281,28 +308,14 @@ def main():
     args = parser.parse_args()
 
     run_dir = PROJECT_ROOT / "output" / args.model
-    run_dir.mkdir(parents=True, exist_ok=True)
-    log = open(run_dir / "log.txt", "w", encoding="utf-8")
-    sys.stdout, sys.stderr = _Tee(sys.stdout, log), _Tee(sys.stderr, log)
+    start_run_log(run_dir)
 
     settings = load_settings()
     configure_bfcl_client(settings)  # must run before bfcl_eval is imported
     # Reflection prompts are long (~16 failure traces), so allow a slow reply but give up after one retry.
     client = create_arc_client(settings).with_options(timeout=600, max_retries=1)
     reflection_model = args.reflection_model or args.model
-
-    def reflection_lm(prompt):
-        messages = prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}]
-        # ARC caps non-streaming replies at 8000 tokens; with thinking on, GLM spent them all on hidden reasoning
-        # and returned empty content. shortcut: assumes a vLLM-served model, stream with a higher max_tokens if thinking is needed.
-        response = client.chat.completions.create(
-            model=reflection_model, messages=messages,
-            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
-        )
-        content = response.choices[0].message.content
-        if not content:  # e.g. a reasoning model that spent its whole reply on hidden thinking
-            print(f"  reflection reply was empty (finish_reason={response.choices[0].finish_reason})", flush=True)
-        return content or ""
+    reflection_lm = make_reflection_lm(client, reflection_model)
 
     train, val, test = load_examples()
     print(f"Split sizes: train={len(train)} val={len(val)} test={len(test)}")

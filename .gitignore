@@ -5,3 +5,5 @@ bfcl_official_results/
 .DS_Store
 __pycache__/
 data/
+output/*/gepa_state/
+
