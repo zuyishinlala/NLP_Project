@@ -33,7 +33,9 @@ GENERAL_RULES_PROMPT = (
     InstructionProposalSignature.default_prompt_template
     + "\n\nWrite general rules about how and when to use tools. Do not mention specific "
     "tasks, file names, people, or values from these examples; the instruction will be "
-    "tested on different tasks."
+    "tested on different tasks. Do not specify an output format, JSON layout, or "
+    "tool-call examples: tool calls go through the native function-calling interface, "
+    "and models that follow such a format write calls as text that is never executed."
 )
 REFLECTION_PROMPT = GENERAL_RULES_PROMPT + (
     " Some examples were produced by earlier versions of the "
