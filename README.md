@@ -271,6 +271,49 @@ Validation accuracy, which chose the best prompt:
   and verify the result. Each prompt fixes its own model's mistakes, so a
   prompt optimized for one model should not be assumed to help another.
 
+### Full GEPA results
+
+Each model was optimized with `scripts.gepa_full` at the default budget of 1300
+rollouts (each run used 1312–1408), using the same model as the reflection model.
+The reflection prompt now forbids output-format rules, JSON layouts, and tool-call
+examples: an earlier run without this rule produced prompts that made
+gpt-oss-120b and GLM-5.3 write tool calls as JSON text that BFCL never executed,
+so their multi-turn accuracy collapsed. The `gepa_optimize.py` results above were
+produced before this rule was added. Each model's best prompt and every
+candidate are in its `report.json`: [GLM-5.3](./output/GLM-5.3-gepa/),
+[DeepSeek-V4.1-Flash](./output/DeepSeek-V4.1-Flash-gepa/), and
+[gpt-oss-120b](./output/gpt-oss-120b-gepa/).
+
+Test accuracy (same 80 `multi_turn_base` and 96 `irrelevance` examples):
+
+| Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
+| --- | ---: | ---: |
+| ARC GLM-5.3 (FC) | 72.50% → 85.00% | 75.00% → 83.33% |
+| ARC DeepSeek-V4.1-Flash (FC) | 70.00% → 77.50% | 82.29% → 95.83% |
+| ARC gpt-oss-120b (FC) | 70.00% → 68.75% | 89.58% → 92.71% |
+
+Validation accuracy, which chose the best prompt:
+
+| Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
+| --- | ---: | ---: |
+| ARC GLM-5.3 (FC) | 65.00% → 85.00% | 75.00% → 87.50% |
+| ARC DeepSeek-V4.1-Flash (FC) | 60.00% → 72.50% | 77.08% → 89.58% |
+| ARC gpt-oss-120b (FC) | 47.50% → 70.00% | 91.67% → 95.83% |
+
+- The no-prompt baseline differs between runs by a few points (for example,
+  gpt-oss-120b multi-turn test is 66.25% above and 70.00% here), so compare the
+  gain over each run's own baseline, not the absolute numbers.
+- **GLM-5.3** improved on both categories (+10 and +8 correct test examples). Its
+  multi-turn gain is larger than `gepa_optimize.py`'s (+3), its irrelevance gain
+  smaller (+15 there). Its best prompt is long (12,815 characters).
+- **DeepSeek-V4.1-Flash** improved on both categories (+6 and +13 examples),
+  about the same overall gain as `gepa_optimize.py` (+12 and +11).
+- **gpt-oss-120b** improved strongly on validation (+9 multi-turn examples) but
+  not on test (−1 and +3 examples). With 8 full validation runs to choose from,
+  the best prompt fits the 88 validation questions rather than the task.
+- At equal cost, neither search method is clearly better: the differences are
+  within a few test examples and each method was run with one seed.
+
 ## Test a direct ARC chat request
 
 The standalone API example uses the same `.env` configuration:
