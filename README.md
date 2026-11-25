@@ -232,9 +232,11 @@ Results go to `output/<model>-gepa/report.json`. GEPA's
 checkpoint is saved in `output/<model>-gepa/gepa_state/`, so running the same
 command again after a crash resumes the search instead of starting over.
 
-### Optimization results
+### GEPA-inspired results (`gepa_optimize.py`)
 
-Each model was optimized with the command above (5 rounds, 3 candidates, replay
+These numbers come from `scripts/gepa_optimize.py` (the reflective hill climbing
+above), not the full GEPA search. Each model was optimized with the
+`gepa_optimize` command above (5 rounds, 3 candidates, replay
 size 8, regression penalty 0.5), using the same model as the reflection model.
 Test is the held-out split: 80 `multi_turn_base` and 96 `irrelevance` examples.
 Each model's best prompt and full history are in its `report.json`, and the run
@@ -242,13 +244,15 @@ log is in `log.txt`: [GLM-5.3](./output/GLM-5.3/),
 [DeepSeek-V4.1-Flash](./output/DeepSeek-V4.1-Flash/), and
 [gpt-oss-120b](./output/gpt-oss-120b/).
 
+GEPA-inspired test accuracy:
+
 | Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
 | --- | ---: | ---: |
 | ARC GLM-5.3 (FC) | 75.00% → 78.75% | 75.00% → 90.62% |
 | ARC DeepSeek-V4.1-Flash (FC) | 65.00% → 80.00% | 81.25% → 92.71% |
 | ARC gpt-oss-120b (FC) | 66.25% → 66.25% | 90.62% → 90.62% |
 
-Validation accuracy, which chose the best prompt:
+GEPA-inspired validation accuracy, which chose the best prompt:
 
 | Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
 | --- | ---: | ---: |
@@ -271,9 +275,9 @@ Validation accuracy, which chose the best prompt:
   and verify the result. Each prompt fixes its own model's mistakes, so a
   prompt optimized for one model should not be assumed to help another.
 
-### Full GEPA results
+### Full GEPA results (`gepa_full.py`)
 
-Each model was optimized with `scripts.gepa_full` at the default budget of 1300
+These numbers come from `scripts/gepa_full.py` (`gepa.optimize()`). Each model was optimized with `scripts.gepa_full` at the default budget of 1300
 rollouts (each run used 1312–1408), using the same model as the reflection model.
 The reflection prompt now forbids output-format rules, JSON layouts, and tool-call
 examples: an earlier run without this rule produced prompts that made
@@ -284,7 +288,7 @@ candidate are in its `report.json`: [GLM-5.3](./output/GLM-5.3-gepa/),
 [DeepSeek-V4.1-Flash](./output/DeepSeek-V4.1-Flash-gepa/), and
 [gpt-oss-120b](./output/gpt-oss-120b-gepa/).
 
-Test accuracy (same 80 `multi_turn_base` and 96 `irrelevance` examples):
+Full GEPA test accuracy (same 80 `multi_turn_base` and 96 `irrelevance` examples):
 
 | Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
 | --- | ---: | ---: |
@@ -292,7 +296,7 @@ Test accuracy (same 80 `multi_turn_base` and 96 `irrelevance` examples):
 | ARC DeepSeek-V4.1-Flash (FC) | 70.00% → 77.50% | 82.29% → 95.83% |
 | ARC gpt-oss-120b (FC) | 70.00% → 68.75% | 89.58% → 92.71% |
 
-Validation accuracy, which chose the best prompt:
+Full GEPA validation accuracy, which chose the best prompt:
 
 | Model | Multi-turn base (no prompt → optimized) | Irrelevance (no prompt → optimized) |
 | --- | ---: | ---: |
